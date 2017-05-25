@@ -21,5 +21,8 @@ if 'url' in query:
 else:
     url = sys.argv[1]
 
+if url.find("/photo"):
+    url = url[:url.find("/photo")]
+
 with urllib.request.urlopen('https://publish.twitter.com/oembed?url=' + url) as response:
     print("Content-type: application/json; charset=UTF-8\n\n",response.read().decode())
