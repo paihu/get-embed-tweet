@@ -21,7 +21,7 @@ if 'url' in query:
 else:
     url = sys.argv[1]
 
-if url.find("/photo"):
+if url.find("/photo") != -1:
     url = url[:url.find("/photo")]
 
 with urllib.request.urlopen('https://publish.twitter.com/oembed?url=' + url) as response:
