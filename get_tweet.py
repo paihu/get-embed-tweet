@@ -1,28 +1,58 @@
 import urllib.request
-import sys
-import cgi
-import os
-import io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-if 'HTTP_REFERER' in os.environ:
-    if 'HTTP_HOST' in os.environ:
-        if not os.environ['HTTP_REFERER'].find(os.environ['HTTP_HOST']):
-            print("Content-type: text/plain; chaeset=UTF-8\n\n referer not good")
-            exit(1)
-else:
-    print("Content-type: text/plain; chaeset=UTF-8\n\n referer not set")
-if 'QUERY_STRING' in os.environ:
-    query = cgi.parse_qs(os.environ['QUERY_STRING'])
-else:
-    query = {}
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse, PlainTextResponse
+import json
 
-if 'url' in query:
-    url = cgi.escape(query['url'][0])
-else:
-    url = sys.argv[1]
+app = FastAPI()
 
-if url.find("/photo") != -1:
-    url = url[:url.find("/photo")]
+@app.get('/', response_class=HTMLResponse)
+def root():
+    return '''
+    <html>
+    <head>
+    <title>Make Embed Tweet</title>
+    <script type="text/javascript">
+    var get_tweet="get_tweet";
+    window.addEventListener("load",function(){
+        console.log("add event listender");
+        document.getElementById("generate").addEventListener("click",function(){
+            console.log("generate");
+            var urls = document.getElementById("in-url").value.split("\\n");
+            var out = new Array(urls.length);
+            urls.forEach(function(element, index, array){
+                var req = new XMLHttpRequest();
+                req.overrideMimeType('text/plain');
+                req.responseType = "text";
+                req.onreadystatechange = function() {
+                    console.log("state change");
+                    if (req.readyState == 4){
+                        if (req.status == 200){
+                            console.log(req.response);
+                            out[index] = JSON.parse(req.response).html;
+                            document.getElementById("out-embed").value = out.join("\\n");
+                        }
+                    }
+                };
+                req.open('GET',get_tweet + "?url=" + element, true);
+                req.send(null);
+            });
+        },false);
+    },false);
+    </script>
+    </head>
+    
+    <body>
+    <textarea id="in-url" rows=10 cols=60></textarea><br>
+    <button id="generate">generate</button><br>
+    <textarea id="out-embed" rows=10 cols=100></textarea>
+    
+    </body>
+    </html>
+    '''
 
-with urllib.request.urlopen('https://publish.twitter.com/oembed?url=' + url) as response:
-    print("Content-type: application/json; charset=UTF-8\n\n",response.read().decode())
+@app.get('/get_tweet', response_class=PlainTextResponse)
+def get_tweet(url: str = ''):
+    if url.find("/photo") != -1:
+        url = url[:url.find("/photo")]
+    with urllib.request.urlopen('https://publish.twitter.com/oembed?url=' + url) as response:
+        return response.read().decode()
